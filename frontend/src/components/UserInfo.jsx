@@ -1,26 +1,25 @@
 import { useEffect, useState } from 'react';
-import { fetchUserAttributes } from 'aws-amplify/auth';
+import { Authenticator } from '@aws-amplify/ui-react';
 
 function UserInfo() {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
-    async function loadUser() {
-      try {
-        const attributes = await fetchUserAttributes();
-        setName(attributes.name || '');
-      } catch (err) {
-        console.log('Error fetching user', err);
-      }
-    }
-
-    loadUser();
+    Auth.currentAuthenticatedUser()
+      .then(user => {
+        setUsername(user.username); // or user.attributes.email, etc.
+      })
+      .catch(err => console.log('Error fetching user', err));
   }, []);
 
   return (
-    <div>
-      <h2>Welcome{name ? `, ${name}` : ''}!</h2>
-    </div>
+    <Authenticator>
+      {({ signOut, user }) => (
+        <div>
+          <h2>Welcome, {user.username}!</h2>
+        </div>
+      )}
+    </Authenticator>
   );
 }
 

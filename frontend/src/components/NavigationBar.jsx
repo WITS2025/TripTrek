@@ -1,174 +1,71 @@
-import { useEffect, useState } from 'react';
-import {
-  Navbar,
-  Nav,
-  Container,
-  Dropdown,
-  Offcanvas,
-  OverlayTrigger,
-  Tooltip,
-} from 'react-bootstrap';
-import { Link, NavLink } from 'react-router-dom';
+import { Navbar, Nav, Container, Dropdown } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import logo from '../assets/TripTrekLogo.png'
 import { useAuth } from '../context/AuthContext';
 
 const NavigationBar = () => {
-  const { user, userAttributes = {}, signOut, isAuthenticated, openAuth } = useAuth();
-
-  const name = userAttributes.name || user?.attributes?.name || '';
-  const email = userAttributes.email || user?.attributes?.email || user?.signInDetails?.loginId || '';
-  const picture = userAttributes.picture || user?.attributes?.picture || '';
-  const displayName = name || email.split('@')[0] || 'User';
-  const firstLetter = displayName.charAt(0).toUpperCase();
-  const [failedAvatarUrl, setFailedAvatarUrl] = useState('');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(() =>
-    window.matchMedia('(min-width: 992px)').matches,
-  );
-  const showProfilePicture = picture && picture !== failedAvatarUrl;
-  const closeMenu = () => setIsMenuOpen(false);
-
-  const navLinkClass = ({ isActive }) =>
-    `nav-link main-nav-link${isActive ? ' main-nav-link--active' : ''}`;
-
-  useEffect(() => {
-    const desktopQuery = window.matchMedia('(min-width: 992px)');
-    const handleBreakpointChange = (event) => {
-      setIsDesktop(event.matches);
-      if (event.matches) setIsMenuOpen(false);
-    };
-
-    setIsDesktop(desktopQuery.matches);
-    desktopQuery.addEventListener('change', handleBreakpointChange);
-    return () => desktopQuery.removeEventListener('change', handleBreakpointChange);
-  }, []);
+  const { user, signOut } = useAuth();
+  
+  const username = user?.username || user?.signInDetails?.loginId || user?.attributes?.email || 'User';
+  const firstLetter = username.charAt(0).toUpperCase();
 
   return (
-    <Navbar
-      expand="lg"
-      expanded={isMenuOpen}
-      onToggle={setIsMenuOpen}
-      className="main-navbar bg-light-sand shadow-sm"
-    >
+    <Navbar expand="lg" className="bg-light-sand shadow-sm">
       <Container fluid>
-        <Navbar.Brand
-          as={Link}
-          to="/"
-          className="d-flex align-items-center text-forest-green"
-          onClick={closeMenu}
-        >
+        <Navbar.Brand as={Link} to="/" className="d-flex align-items-center text-forest-green">
           <img
             src={logo}
             alt="TripTrek"
-            className="main-navbar-logo d-inline-block align-top me-2"
+            style={{ maxHeight: '80px' }}
+            className="d-inline-block align-top me-2"
           />
         </Navbar.Brand>
         
-        <Navbar.Toggle className="main-navbar-toggle" aria-controls="main-navbar-nav" />
-        <Navbar.Offcanvas
-          id="main-navbar-nav"
-          aria-labelledby="main-navbar-nav-label"
-          placement="end"
-          className="main-navbar-offcanvas"
-        >
-          <Offcanvas.Header closeButton>
-            <Offcanvas.Title id="main-navbar-nav-label">Menu</Offcanvas.Title>
-          </Offcanvas.Header>
-          <Offcanvas.Body>
-            <Nav className="main-nav ms-auto align-items-lg-center">
-              <NavLink to="/" end className={navLinkClass} onClick={closeMenu}>
-                <span className="main-nav-link-label">Home</span>
-              </NavLink>
-              <NavLink to="/trips" className={navLinkClass} onClick={closeMenu}>
-                <span className="main-nav-link-label">Trips</span>
-              </NavLink>
-              <NavLink to="/about" className={navLinkClass} onClick={closeMenu}>
-                <span className="main-nav-link-label">About</span>
-              </NavLink>
-              <NavLink to="/contact" className={navLinkClass} onClick={closeMenu}>
-                <span className="main-nav-link-label">Contact Us</span>
-              </NavLink>
+        <Navbar.Toggle aria-controls="main-navbar-nav" />
+        <Navbar.Collapse id="main-navbar-nav">
+          <Nav className="ms-auto align-items-center">
+            <Nav.Link as={Link} to="/" className="text-slate-gray">Home</Nav.Link>
+            <Nav.Link as={Link} to="/trips" className="text-slate-gray">Trips</Nav.Link>
+            <Nav.Link as={Link} to="/about" className="text-slate-gray">About</Nav.Link>
+            <Nav.Link as={Link} to="/contact" className="text-slate-gray">Contact Us</Nav.Link>
+            
+            {/* User Avatar Dropdown */}
+            <Dropdown align="end" className="ms-3">
+              <Dropdown.Toggle 
+                as="div" 
+                id="user-dropdown"
+                bsPrefix="none"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: '#1a5f1a', // forest green
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  border: '2px solid #e0e0e0'
+                }}
+              >
+                {firstLetter}
+              </Dropdown.Toggle>
 
-              <div className="nav-account ms-lg-3">
-                {isAuthenticated ? (
-                  <Dropdown align="end">
-                    <Dropdown.Toggle
-                      as="div"
-                      id="user-dropdown"
-                      bsPrefix="none"
-                      aria-label={`Open account menu for ${displayName}`}
-                      className="account-avatar"
-                    >
-                      {showProfilePicture ? (
-                        <img
-                          src={picture}
-                          alt=""
-                          className="account-avatar-image"
-                          referrerPolicy="no-referrer"
-                          onError={() => setFailedAvatarUrl(picture)}
-                        />
-                      ) : firstLetter}
-                    </Dropdown.Toggle>
-
-                    <Dropdown.Menu>
-                      <Dropdown.Header>
-                        <strong className="d-block text-slate-gray">{displayName}</strong>
-                        {email && (
-                          <span className="d-block text-muted fw-normal small">{email}</span>
-                        )}
-                      </Dropdown.Header>
-                      <Dropdown.Divider />
-                      <Dropdown.Item
-                        onClick={() => {
-                          closeMenu();
-                          signOut();
-                        }}
-                      >
-                        Sign Out
-                      </Dropdown.Item>
-                    </Dropdown.Menu>
-                  </Dropdown>
-                ) : (
-                  <OverlayTrigger
-                    placement={isDesktop ? 'bottom' : 'right'}
-                    popperConfig={{
-                      modifiers: [
-                        { name: 'preventOverflow', options: { padding: 8 } },
-                        {
-                          name: 'flip',
-                          options: {
-                            fallbackPlacements: isDesktop
-                              ? ['bottom-end', 'bottom-start', 'top']
-                              : ['right-start', 'left', 'top'],
-                          },
-                        },
-                      ],
-                    }}
-                    overlay={(
-                      <Tooltip id="guest-account-tooltip" className="guest-account-tooltip">
-                        Sign in or create account
-                      </Tooltip>
-                    )}
-                  >
-                    <button
-                      type="button"
-                      className="account-avatar account-avatar--guest"
-                      aria-label="Sign in or create account"
-                      onClick={() => {
-                        closeMenu();
-                        openAuth();
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm-8 9a8 8 0 0 1 16 0" />
-                      </svg>
-                    </button>
-                  </OverlayTrigger>
-                )}
-              </div>
-            </Nav>
-          </Offcanvas.Body>
-        </Navbar.Offcanvas>
+              <Dropdown.Menu>
+                <Dropdown.Header>
+                  <strong>{username}</strong>
+                </Dropdown.Header>
+                <Dropdown.Divider />
+                <Dropdown.Item onClick={signOut}>
+                  <i className="bi bi-box-arrow-right me-2"></i>
+                  Sign Out
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
+          </Nav>
+        </Navbar.Collapse>
       </Container>
     </Navbar>
   );
