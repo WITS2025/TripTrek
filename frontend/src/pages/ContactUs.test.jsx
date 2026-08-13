@@ -1,59 +1,41 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
-import ContactUs from './ContactUs';
+import { describe, it, expect } from 'vitest';
+import ContactUs from './ContactUs'; // Adjust the path if needed
 
 describe('ContactUs component', () => {
-  it('renders the contact introduction and support topics', () => {
+  it('renders the heading and intro text', () => {
     render(<ContactUs />);
-
-    expect(screen.getByRole('heading', { name: /let’s make your next trip easier/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /planning questions/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /account support/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /ideas & feedback/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /contact us/i })).toBeInTheDocument();
+    expect(screen.getByText(/have questions about your itinerary/i)).toBeInTheDocument();
   });
 
-  it('renders accessible form fields and the submit button', () => {
+  it('renders the form fields', () => {
     render(<ContactUs />);
+    expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/message/i)).toBeInTheDocument();
+  });
 
-    expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/what can we help with/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^message$/i)).toHaveAttribute('aria-describedby', 'contact-message-hint');
+  it('renders the submit button', () => {
+    render(<ContactUs />);
     expect(screen.getByRole('button', { name: /send message/i })).toBeInTheDocument();
   });
 
-  it('offers the expected contact topics', async () => {
+  it('allows typing into the form fields', async () => {
     render(<ContactUs />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByLabelText(/what can we help with/i));
-
-    expect(screen.getByRole('option', { name: /trip planning/i })).toHaveAttribute('aria-selected', 'false');
-    expect(screen.getByRole('option', { name: /account and sign-in/i })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /feedback or an idea/i })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /something else/i })).toBeInTheDocument();
-  });
-
-  it('allows completing the form', async () => {
-    render(<ContactUs />);
-    const user = userEvent.setup();
-
-    const nameInput = screen.getByLabelText(/^name$/i);
-    const emailInput = screen.getByLabelText(/^email$/i);
-    const subjectInput = screen.getByLabelText(/what can we help with/i);
-    const messageInput = screen.getByLabelText(/^message$/i);
+    const nameInput = screen.getByLabelText(/name/i);
+    const emailInput = screen.getByLabelText(/email/i);
+    const messageInput = screen.getByLabelText(/message/i);
 
     await user.type(nameInput, 'Jane Doe');
     await user.type(emailInput, 'jane@example.com');
-    await user.click(subjectInput);
-    await user.click(screen.getByRole('option', { name: /trip planning/i }));
     await user.type(messageInput, 'I would like help planning a trip.');
 
     expect(nameInput).toHaveValue('Jane Doe');
     expect(emailInput).toHaveValue('jane@example.com');
-    expect(subjectInput).toHaveTextContent('Trip planning');
-    expect(document.querySelector('input[name="subject"]')).toHaveValue('planning');
     expect(messageInput).toHaveValue('I would like help planning a trip.');
   });
 });

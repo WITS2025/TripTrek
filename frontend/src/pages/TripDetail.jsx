@@ -1,524 +1,281 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { format, parse } from 'date-fns';
-import { useNavigate, useParams } from 'react-router-dom';
+
+
+// // src/pages/TripDetail.jsx
+// import React, { useState, useEffect } from 'react';
+// import { useParams, useNavigate } from 'react-router-dom';
+// import TripForm from '../components/TripForm';
+// import { useTripContext } from '../context/TripContext';
+
+
+// export default function TripDetail() {
+//   const { tripId } = useParams();
+//   const navigate = useNavigate();
+//   const { trips, loading, saveTrip, getTripById } = useTripContext();
+
+//   const [trip, setTrip] = useState(null);
+//   const [editingTrip, setEditingTrip] = useState(null);
+
+//   useEffect(() => {
+//     if (trip?.imageUrl) {
+//       console.log("trip.imageUrl changed:", trip.imageUrl);
+//     }
+//   }, [trip?.imageUrl]);
+
+//   useEffect(() => {
+//     if (trips.length > 0) {
+//       const foundTrip = getTripById(tripId);
+//       setTrip(foundTrip);
+//     }
+//   }, [trips, tripId, getTripById]);
+
+//   const handleSave = async (updatedTrip) => {
+//     await saveTrip(updatedTrip);
+//     setEditingTrip(null);
+//     const refreshedTrip = getTripById(tripId);
+//     setTrip(refreshedTrip);
+//   };
+
+//   if (loading) {
+//     return (
+//       <div className="container bg-light-sand py-5 text-slate-gray">
+//         <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+//           <div className="spinner-border text-terra" role="status"></div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   if (!trip) {
+//     return (
+//       <div className="container bg-light-sand py-5 text-slate-gray">
+//         <div className="text-center">
+//           <h2 className="text-forest-green mb-4">Trip Not Found</h2>
+//           <p className="mb-4">The requested trip could not be found.</p>
+//           <button className="btn btn-terra" onClick={() => navigate('/trips')}>
+//             Back to Trips
+//           </button>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="container bg-light-sand py-5 text-slate-gray">
+//       <h2 className="text-center mb-4 text-forest-green">{trip.destination}</h2>
+//       {trip.imageUrl && (
+//         <div className="text-center mb-4">
+//           <img
+//             key={trip.imageUrl}
+//             src={trip.imageUrl}
+//             alt={trip.destination || 'Trip image'}
+//             className="img-fluid rounded"
+//             style={{ maxHeight: '300px' }}
+//           />
+//         </div>
+//       )}
+//       <h5 className="text-forest-green mb-3 text-center">
+//         {trip.startDate} — {trip.endDate}
+//       </h5>
+
+//       {editingTrip ? (
+//         <TripForm trip={editingTrip} onSave={handleSave} onCancel={() => setEditingTrip(null)} />
+//       ) : (
+//         <div>
+//           <div className="d-flex justify-content-center mb-3">
+//             <button className="btn btn-secondary mb-3 me-2" onClick={() => navigate('/trips')}>
+//               &larr; Back to Trips
+//             </button>
+//             <button className="btn btn-terra mb-3" onClick={() => setEditingTrip(trip)}>
+//               Edit Trip
+//             </button>
+//           </div>
+
+//           {trip.itinerary && trip.itinerary.length > 0 ? (
+//             trip.itinerary.map((dayPlan, idx) => (
+//               <div key={idx} className="mb-4 p-4 bg-white-custom rounded shadow-sm">
+//                 <h5 className="text-forest-green">{dayPlan.date}</h5>
+//                 {Array.isArray(dayPlan.activities) && dayPlan.activities.length > 0 ? (
+//                   <ul className="list-unstyled">
+//                     {dayPlan.activities.map((ev, i) => (
+//                       <li key={i} className="d-flex mb-1">
+//                         <div className="me-3 text-end" style={{ width: '80px' }}>
+//                           <strong>{ev.time}</strong>
+//                         </div>
+//                         <div>{ev.name}</div>
+//                       </li>
+//                     ))}
+//                   </ul>
+//                 ) : (
+//                   <div className="text-muted">No activities planned for this day.</div>
+//                 )}
+//               </div>
+//             ))
+//           ) : (
+//             <div className="text-center text-muted">
+//               <p>No itinerary available for this trip.</p>
+//             </div>
+//           )}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+
+
+
+
+
+
+// src/pages/TripDetail.jsx
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import TripForm from '../components/TripForm';
-import TripMap from '../components/TripMap';
-import DayWeather from '../components/DayWeather';
-import TripShareDialog from '../components/TripShareDialog';
 import { useTripContext } from '../context/TripContext';
-import './TripDetail.css';
+import TripMap from '../components/TripMap';
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-const parseTripDate = (value) => {
-  if (!value) return null;
-  const date = parse(value, 'MM/dd/yyyy', new Date());
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const formatLongDate = (value, includeYear = true) => {
-  const date = parseTripDate(value);
-  return date ? format(date, includeYear ? 'MMM d, yyyy' : 'EEEE, MMMM d') : value;
-};
-
-const formatTripRange = (startValue, endValue) => {
-  const start = parseTripDate(startValue);
-  const end = parseTripDate(endValue);
-  if (!start || !end) return [startValue, endValue].filter(Boolean).join(' – ');
-  if (start.getFullYear() !== end.getFullYear()) {
-    return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`;
-  }
-  if (start.getMonth() === end.getMonth()) {
-    return `${format(start, 'MMM d')} – ${format(end, 'd, yyyy')}`;
-  }
-  return `${format(start, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`;
-};
-
-const getTripLength = (startDate, endDate) => {
-  const start = parseTripDate(startDate);
-  const end = parseTripDate(endDate);
-  if (!start || !end || end < start) return null;
-  return Math.round((end - start) / 86400000) + 1;
-};
-
-function ArrowLeftIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M19 12H5M11 6l-6 6 6 6" />
-    </svg>
-  );
-}
-
-function HeroFallback() {
-  return (
-    <div className="trip-detail-hero-fallback" aria-hidden="true">
-      <svg viewBox="0 0 72 72">
-        <path d="M11 55c8-19 17-17 23-34 5-13 16-16 30-13" />
-        <circle cx="11" cy="55" r="4" />
-        <path d="M59 6c-5 0-9 4-9 9 0 7 9 15 9 15s9-8 9-15c0-5-4-9-9-9Z" />
-      </svg>
-    </div>
-  );
-}
 
 export default function TripDetail() {
   const { tripId } = useParams();
   const navigate = useNavigate();
-  const { trips, loading, saveTrip, getTripById, fetchTrips } = useTripContext();
+  const { trips, loading, saveTrip, getTripById } = useTripContext();
+
   const [trip, setTrip] = useState(null);
   const [editingTrip, setEditingTrip] = useState(null);
-  const [openMapDay, setOpenMapDay] = useState(null);
-  const [openWeatherDay, setOpenWeatherDay] = useState(null);
-  const [mappedPlacesByDay, setMappedPlacesByDay] = useState({});
-  const [editPinRequest, setEditPinRequest] = useState(null);
-  const [placeDetailsRequest, setPlaceDetailsRequest] = useState(null);
-  const [showShare, setShowShare] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
-    if (trips.length > 0) setTrip(getTripById(tripId));
+    if (trip?.imageUrl) {
+      console.log("trip.imageUrl changed:", trip.imageUrl);
+    }
+  }, [trip?.imageUrl]);
+
+  useEffect(() => {
+    if (trips.length > 0) {
+      const foundTrip = getTripById(tripId);
+      setTrip(foundTrip);
+    }
   }, [trips, tripId, getTripById]);
 
-  const activityCount = useMemo(() => (
-    trip?.itinerary?.reduce((total, day) => total + (day.activities?.length || 0), 0) || 0
-  ), [trip]);
-  const tripLength = getTripLength(trip?.startDate, trip?.endDate);
-  const isOwner = !trip?.access || trip.access === 'owner';
-  const canEdit = isOwner || trip?.access === 'editor';
+  const toggleMap = () => {
+    setShowMap(prev => !prev);
+  };
 
   const handleSave = async (updatedTrip) => {
-    try {
-      setSaveError('');
-      await saveTrip(updatedTrip);
-      setEditingTrip(null);
-    } catch (error) {
-      setSaveError(error.message || 'Unable to save this trip.');
-    }
-  };
-
-  const handleLoadLatest = async () => {
+    await saveTrip(updatedTrip);
     setEditingTrip(null);
-    setSaveError('');
-    await fetchTrips();
-  };
-
-  const handleActivityMapUpdate = async (dayIndex, activityIndex, mapUpdates) => {
-    const itinerary = trip.itinerary.map((day, currentDayIndex) => (
-      currentDayIndex === dayIndex
-        ? {
-            ...day,
-            activities: day.activities.map((activity, currentActivityIndex) => (
-              currentActivityIndex === activityIndex
-                ? { ...activity, ...mapUpdates }
-                : activity
-            )),
-          }
-        : day
-    ));
-
-    await saveTrip({ ...trip, itinerary });
-  };
-
-  const handleMappedPlacesChange = useCallback((dayIndex, places) => {
-    setMappedPlacesByDay((current) => ({ ...current, [dayIndex]: places }));
-  }, []);
-
-  const handleEditPinRequestHandled = useCallback(() => {
-    setEditPinRequest(null);
-  }, []);
-
-  const handlePlaceDetailsRequestHandled = useCallback(() => {
-    setPlaceDetailsRequest(null);
-  }, []);
-
-  const handleViewPlace = (dayIndex, place) => {
-    setOpenWeatherDay(null);
-    setOpenMapDay(dayIndex);
-    setPlaceDetailsRequest({
-      dayIndex,
-      place,
-      requestId: Date.now(),
-    });
-  };
-
-  const handleEditPin = (dayIndex, place) => {
-    setOpenWeatherDay(null);
-    setOpenMapDay(dayIndex);
-    setEditPinRequest({
-      dayIndex,
-      activityIndex: place.activityIndex,
-      location: place.location || place.formattedAddress,
-      requestId: Date.now(),
-    });
-  };
-
-  const handleRemovePin = async (dayIndex, place) => {
-    try {
-      setSaveError('');
-      await handleActivityMapUpdate(dayIndex, place.activityIndex, {
-        location: '',
-        mapExcluded: true,
-      });
-      setMappedPlacesByDay((current) => ({
-        ...current,
-        [dayIndex]: (current[dayIndex] || []).filter(
-          (mappedPlace) => mappedPlace.activityIndex !== place.activityIndex,
-        ),
-      }));
-    } catch (error) {
-      setSaveError(error.message || 'Unable to remove that pin.');
-    }
+    const refreshedTrip = getTripById(tripId);
+    console.log("Refreshed trip after save:", refreshedTrip);
+    console.log("Refreshed trip imageUrl:", refreshedTrip?.imageUrl);  // <--- Step 1 logging added here
+    setTrip(refreshedTrip);
   };
 
   if (loading) {
     return (
-      <main className="trip-detail-page trip-detail-state-page">
-        <div className="trip-detail-loader" role="status" aria-label="Loading trip">
-          <span />
-          <p>Gathering your plans…</p>
+      <div className="container bg-light-sand py-5 text-slate-gray">
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+          <div className="spinner-border text-terra" role="status"></div>
         </div>
-      </main>
+      </div>
     );
   }
 
   if (!trip) {
     return (
-      <main className="trip-detail-page trip-detail-state-page">
-        <section className="trip-detail-not-found">
-          <div className="trip-detail-not-found-icon" aria-hidden="true">?</div>
-          <p className="trip-detail-eyebrow">Lost the trail?</p>
-          <h1>Trip Not Found</h1>
-          <p>The requested trip could not be found.</p>
-          <button type="button" onClick={() => navigate('/trips')}>
-            <ArrowLeftIcon />
+      <div className="container bg-light-sand py-5 text-slate-gray">
+        <div className="text-center">
+          <h2 className="text-forest-green mb-4">Trip Not Found</h2>
+          <p className="mb-4">The requested trip could not be found.</p>
+          <button className="btn btn-terra" onClick={() => navigate('/trips')}>
             Back to Trips
           </button>
-        </section>
-      </main>
+        </div>
+      </div>
     );
   }
 
   return (
-    <main className="trip-detail-page">
-      <div className="trip-detail-inner">
-        <button type="button" className="trip-detail-back" onClick={() => navigate('/trips')}>
-          <ArrowLeftIcon />
-          Back to Trips
-        </button>
-
-        <section className="trip-detail-hero">
-          <div className="trip-detail-hero-media">
-            {trip.imageUrl ? (
-              <img src={trip.imageUrl} alt={`${trip.destination} trip`} />
-            ) : (
-              <HeroFallback />
-            )}
-            <span className="trip-detail-saved-badge">
-              {isOwner ? 'Owner' : canEdit ? 'Editor' : 'Viewer'}
-            </span>
-          </div>
-
-          <div className="trip-detail-hero-content">
-            <p className="trip-detail-eyebrow">
-              {isOwner
-                ? 'Your next chapter'
-                : `Shared by ${trip.sharedByName || trip.sharedByEmail || 'a travel companion'}`}
-            </p>
-            <h1>{trip.destination}</h1>
-            <p className="trip-detail-date-range">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z" />
-              </svg>
-              {formatTripRange(trip.startDate, trip.endDate)}
-            </p>
-
-            <dl className="trip-detail-quick-stats">
-              <div>
-                <dt>Length</dt>
-                <dd>{tripLength ? `${tripLength} ${tripLength === 1 ? 'day' : 'days'}` : '—'}</dd>
-              </div>
-              <div>
-                <dt>Plans</dt>
-                <dd>{activityCount} {activityCount === 1 ? 'activity' : 'activities'}</dd>
-              </div>
-              <div>
-                <dt>Days mapped</dt>
-                <dd>{trip.itinerary?.length || 0}</dd>
-              </div>
-            </dl>
-
-            {!editingTrip && (
-              <div className="trip-detail-actions">
-                {canEdit && (
-                  <button
-                    type="button"
-                    className="trip-detail-primary-action"
-                    onClick={() => {
-                      setSaveError('');
-                      setEditingTrip(trip);
-                      setOpenMapDay(null);
-                      setOpenWeatherDay(null);
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="m5 16-.8 3.8L8 19l10-10-3-3L5 16ZM13.8 7.2l3 3" />
-                    </svg>
-                    Edit Trip
-                  </button>
-                )}
-                {isOwner && (
-                  <button
-                    type="button"
-                    className="trip-detail-secondary-action"
-                    onClick={() => setShowShare(true)}
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <circle cx="9" cy="8" r="3" />
-                      <path d="M3.5 18c.5-3.2 2.4-5 5.5-5s5 1.8 5.5 5M16 8h5M18.5 5.5v5" />
-                    </svg>
-                    Share Trip
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {saveError && (
-          <div className="trip-detail-save-error" role="alert">
-            <span>{saveError}</span>
-            <button type="button" onClick={handleLoadLatest}>Load latest changes</button>
-          </div>
-        )}
-
-        {editingTrip ? (
-          <section className="trip-detail-edit-section" aria-label="Edit trip">
-            <TripForm
-              trip={editingTrip}
-              onSave={handleSave}
-              onCancel={() => {
-                setEditingTrip(null);
-                setSaveError('');
-              }}
-            />
-          </section>
-        ) : (
-          <>
-            <section className="trip-detail-itinerary" aria-labelledby="trip-detail-itinerary-heading">
-              <header className="trip-detail-section-heading">
-                <div>
-                  <p className="trip-detail-eyebrow">Day by day</p>
-                  <h2 id="trip-detail-itinerary-heading">Your itinerary</h2>
-                </div>
-                <p>{activityCount ? 'Everything you have planned, all in one place.' : 'A little room for possibility.'}</p>
-              </header>
-
-              {trip.itinerary?.length ? (
-                <div className="trip-detail-timeline">
-                  {trip.itinerary.map((dayPlan, dayIndex) => (
-                    <article className="trip-detail-day" key={dayPlan.date || dayIndex}>
-                      <header>
-                        <span>Day {dayIndex + 1}</span>
-                        <div>
-                          <h3>{formatLongDate(dayPlan.date, false)}</h3>
-                          <p>{dayPlan.date}</p>
-                        </div>
-                        <div className="trip-detail-day-heading-actions">
-                          <small>{dayPlan.activities?.length || 0} {dayPlan.activities?.length === 1 ? 'plan' : 'plans'}</small>
-                           {apiKey && dayPlan.activities?.length > 0 && (
-                             <button
-                               type="button"
-                               className="trip-detail-day-map-toggle"
-                               data-tooltip="Map"
-                               title="Map"
-                               aria-label={openMapDay === dayIndex ? 'Close map' : 'Open map'}
-                               aria-expanded={openMapDay === dayIndex}
-                               aria-controls={`trip-day-map-${dayIndex}`}
-                               onClick={() => {
-                                 setOpenWeatherDay(null);
-                                 setOpenMapDay((currentDay) => (currentDay === dayIndex ? null : dayIndex));
-                               }}
-                             >
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="m4 6 5-2 6 2 5-2v14l-5 2-6-2-5 2V6ZM9 4v14M15 6v14" />
-                              </svg>
-                             </button>
-                           )}
-                           {apiKey && (
-                             <button
-                               type="button"
-                               className="trip-detail-day-map-toggle"
-                               data-tooltip="Weather"
-                               title="Weather"
-                               aria-label={openWeatherDay === dayIndex ? 'Close weather' : 'Open weather'}
-                               aria-expanded={openWeatherDay === dayIndex}
-                               aria-controls={`trip-day-weather-${dayIndex}`}
-                               onClick={() => {
-                                 setOpenMapDay(null);
-                                 setOpenWeatherDay((currentDay) => (currentDay === dayIndex ? null : dayIndex));
-                               }}
-                             >
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M8 17h9a4 4 0 0 0 .6-8A6 6 0 0 0 6.2 7.5 4.8 4.8 0 0 0 8 17Z" />
-                              </svg>
-                             </button>
-                           )}
-                        </div>
-                      </header>
-
-                      <div className={`trip-detail-day-body${openMapDay === dayIndex || openWeatherDay === dayIndex ? ' has-viewer' : ''}`}>
-                        <div className="trip-detail-day-plans">
-                          {Array.isArray(dayPlan.activities) && dayPlan.activities.length > 0 ? (
-                            <ul>
-                              {dayPlan.activities.map((activity, activityIndex) => {
-                                const mappedPlaces = mappedPlacesByDay[dayIndex] || [];
-                                const placeIndex = mappedPlaces.findIndex((place) => place.activityIndex === activityIndex);
-                                const place = placeIndex >= 0 ? mappedPlaces[placeIndex] : null;
-                                const placeNameDuplicatesActivity = place?.name?.trim().toLowerCase()
-                                  === activity.name?.trim().toLowerCase();
-
-                                return (
-                                  <li key={`${activity.time}-${activity.name}-${activityIndex}`}>
-                                    <time>{activity.time || 'Flexible'}</time>
-                                    <span aria-hidden="true" />
-                                    <div className="trip-detail-activity-content">
-                                      <p>{activity.name}</p>
-                                      {place && (
-                                        <div className={`trip-detail-activity-place${openMapDay === dayIndex ? ' has-map-pin' : ''}`}>
-                                          {place.photoUrl && (
-                                            <button
-                                              type="button"
-                                              className="trip-detail-activity-place-photo"
-                                              aria-label={`View details for ${place.name}`}
-                                              onClick={() => handleViewPlace(dayIndex, place)}
-                                            >
-                                              <img src={place.photoUrl} alt="" loading="lazy" />
-                                            </button>
-                                          )}
-                                          {openMapDay === dayIndex && (
-                                            <span className="trip-detail-activity-map-pin" aria-hidden="true">
-                                              <svg viewBox="0 0 24 28">
-                                                <path d="M12 27S2 18.4 2 10.7A10 10 0 0 1 22 10.7C22 18.4 12 27 12 27Z" />
-                                              </svg>
-                                              <b>{placeIndex + 1}</b>
-                                            </span>
-                                          )}
-                                          <div>
-                                            {!placeNameDuplicatesActivity && <strong>{place.name}</strong>}
-                                            <small>{place.formattedAddress}</small>
-                                          </div>
-                                          {canEdit && (
-                                            <div className="trip-day-map-place-actions" aria-label={`Pin actions for ${activity.name}`}>
-                                              <button
-                                                type="button"
-                                                aria-label={`Edit pin for ${activity.name}`}
-                                                title="Edit pin"
-                                                data-tooltip="Edit pin"
-                                                onClick={() => handleEditPin(dayIndex, place)}
-                                              >
-                                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                  <path d="m4 16-.7 4.7L8 20l10.6-10.6a2.1 2.1 0 0 0-3-3L5 17Z" />
-                                                  <path d="m14.5 7.5 3 3" />
-                                                </svg>
-                                              </button>
-                                              <button
-                                                type="button"
-                                                className="is-delete"
-                                                aria-label={`Remove pin for ${activity.name}`}
-                                                title="Remove pin"
-                                                data-tooltip="Remove pin"
-                                                onClick={() => handleRemovePin(dayIndex, place)}
-                                              >
-                                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                  <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
-                                                </svg>
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          ) : (
-                            <div className="trip-detail-open-day">
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 3v18M3 12h18" />
-                              </svg>
-                              <div>
-                                <strong>No activities planned for this day.</strong>
-                                <p>Leave it open, or edit the trip when inspiration strikes.</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                         {apiKey && openMapDay === dayIndex && (
-                          <section
-                            id={`trip-day-map-${dayIndex}`}
-                            className="trip-day-map-panel"
-                           aria-label={`Map for day ${dayIndex + 1}`}
-                          >
-                            <button type="button" className="trip-day-viewer-close trip-day-map-close" onClick={() => setOpenMapDay(null)} aria-label="Close map">×</button>
-                            <TripMap
-                              dayPlan={dayPlan}
-                              destination={trip.destination}
-                              dayNumber={dayIndex + 1}
-                              dayIndex={dayIndex}
-                              canEdit={canEdit}
-                              editPinRequest={editPinRequest?.dayIndex === dayIndex ? editPinRequest : null}
-                              onEditPinRequestHandled={handleEditPinRequestHandled}
-                              placeDetailsRequest={placeDetailsRequest?.dayIndex === dayIndex ? placeDetailsRequest : null}
-                              onPlaceDetailsRequestHandled={handlePlaceDetailsRequestHandled}
-                              onMappedPlacesChange={handleMappedPlacesChange}
-                              onUpdateActivityMap={(activityIndex, mapUpdates) => (
-                                handleActivityMapUpdate(dayIndex, activityIndex, mapUpdates)
-                              )}
-                            />
-                          </section>
-                        )}
-                        {apiKey && openWeatherDay === dayIndex && (
-                          <section id={`trip-day-weather-${dayIndex}`} className="trip-day-weather-panel" aria-label={`Weather for day ${dayIndex + 1}`}>
-                            <DayWeather
-                              dayPlan={dayPlan}
-                              destination={trip.destination}
-                              mappedPlaces={mappedPlacesByDay[dayIndex] || []}
-                              onClose={() => setOpenWeatherDay(null)}
-                            />
-                          </section>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="trip-detail-empty-itinerary">
-                  <HeroFallback />
-                  <h3>No itinerary available for this trip.</h3>
-                  <p>Add a few ideas—or keep the whole adventure spontaneous.</p>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSaveError('');
-                        setEditingTrip(trip);
-                      }}
-                    >
-                      Start planning
-                    </button>
-                  )}
-                </div>
-              )}
-            </section>
-
-          </>
-        )}
-      </div>
-      {showShare && (
-        <TripShareDialog trip={trip} onClose={() => setShowShare(false)} />
+    <div className="container bg-light-sand py-5 text-slate-gray">
+      <h2 className="text-center mb-4 text-forest-green">{trip.destination}</h2>
+      {trip.imageUrl && (
+        <div className="text-center mb-4">
+          <img
+            key={trip.imageUrl}
+            src={trip.imageUrl}
+            alt={trip.destination || 'Trip image'}
+            className="img-fluid rounded"
+            style={{ maxHeight: '300px' }}
+          />
+        </div>
       )}
-    </main>
+      <h5 className="text-forest-green mb-3 text-center">
+        {trip.startDate} — {trip.endDate}
+      </h5>
+
+      {editingTrip ? (
+        <TripForm trip={editingTrip} onSave={handleSave} onCancel={() => setEditingTrip(null)} />
+      ) : (
+        <div>
+          <div className="d-flex justify-content-center mb-3">
+            <button className="btn btn-secondary mb-3 me-2" onClick={() => navigate('/trips')}>
+              &larr; Back to Trips
+            </button>
+            <button
+              className="btn btn-terra mb-3 me-2"
+              onClick={() => {
+                setEditingTrip(trip);
+                setShowMap(false); // because if map is on page, mapData won't reset
+              }}
+            >
+              Edit Trip
+            </button>
+            { apiKey && (
+              <button 
+                className="btn btn-terra mb-3"
+                onClick={toggleMap}>
+                {showMap ? 'Hide Map' : 'Show Map'}
+              </button>)}
+          </div>
+
+          {trip.itinerary && trip.itinerary.length > 0 ? (
+            trip.itinerary.map((dayPlan, idx) => (
+              <div key={idx} className="mb-4 p-4 bg-white-custom rounded shadow-sm">
+                <h5 className="text-forest-green">{dayPlan.date}</h5>
+                {Array.isArray(dayPlan.activities) && dayPlan.activities.length > 0 ? (
+                  <ul className="list-unstyled">
+                    {dayPlan.activities.map((ev, i) => (
+                      <li key={i} className="d-flex mb-1">
+                        <div className="me-3 text-end" style={{ width: '80px' }}>
+                          <strong>{ev.time}</strong>
+                        </div>
+                        <div>{ev.name}</div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-muted">No activities planned for this day.</div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-muted">
+              <p>No itinerary available for this trip.</p>
+            </div>
+          )}
+          {apiKey && showMap && <TripMap
+            trip={trip}
+            onMapDataReady={(mapData) => {
+              const updatedTrip = {
+                ...trip,
+                mapData
+              };
+              //setTrip(updatedTrip);
+              handleSave(updatedTrip); // <-- saves and refreshes
+            }}
+          />}
+        </div>
+      )}
+    </div>
   );
 }

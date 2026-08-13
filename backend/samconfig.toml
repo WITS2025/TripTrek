@@ -4,14 +4,15 @@ version = 0.1
 [default.deploy]
 [default.deploy.parameters]
 stack_name = "TripTrekStack"
-resolve_s3 = true
+resolve_s3 = false                  # does not create new bucket
+s3_bucket = "wits-sam-deployments"
 s3_prefix = "TripTrekStack"
 region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
-disable_rollback = false
+disable_rollback = true
 image_repositories = []
-parameter_overrides = "ImageUploadBucket=trek-a-trip-images-bucket CognitoUserPoolId=us-east-1_Ks6i9yln5 CognitoUserPoolClientId=3n8imnlps0an3lj9rp2umi7bu6"
+parameter_overrides = "ImageUploadBucket=wits-triptrek-images"
 
 [default.build.parameters]
 cached = true
