@@ -8,7 +8,7 @@ import { TripProvider } from '../context/TripContext'
 
 import '@testing-library/jest-dom'
 
-import { vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
  
 // Mock useParams and useNavigate
 
@@ -98,6 +98,8 @@ const mockTripContext = {
 
   saveTrip: vi.fn(),
 
+  fetchTrips: vi.fn(),
+
   getTripById: vi.fn((id) => id === mockTripId ? mockTrip : null)
 
 }
@@ -164,6 +166,8 @@ describe('TripDetail', () => {
 
     mockTripContext.saveTrip = vi.fn().mockResolvedValue()
 
+    mockTripContext.fetchTrips = vi.fn().mockResolvedValue()
+
   })
  
   it('shows loading spinner when loading', () => {
@@ -228,7 +232,7 @@ describe('TripDetail', () => {
  
     // Check trip destination and dates
 
-    expect(screen.getByText('07/20/2025 — 07/22/2025')).toBeInTheDocument()
+    expect(screen.getByText('Jul 20 – 22, 2025')).toBeInTheDocument()
  
     // Check itinerary days
 
@@ -300,11 +304,11 @@ describe('TripDetail', () => {
  
     await waitFor(() => {
 
-      expect(screen.getByText('← Back to Trips')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Back to Trips' })).toBeInTheDocument()
 
     })
  
-    fireEvent.click(screen.getByText('← Back to Trips'))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Trips' }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/trips')
 
@@ -382,7 +386,7 @@ describe('TripDetail', () => {
  
     await waitFor(() => {
 
-      expect(screen.getByText('Paris')).toBeInTheDocument() // Header shows destination
+      expect(screen.getByRole('heading', { name: 'Paris', level: 1 })).toBeInTheDocument()
 
     })
 
@@ -412,11 +416,13 @@ describe('TripDetail', () => {
 
     expect(screen.getByDisplayValue('Paris')).toBeInTheDocument()
 
-    // Just verify that date inputs exist with some date value (any format)
+    // The custom date triggers show the saved dates in a friendly format.
 
-    const dateInputs = screen.getAllByDisplayValue(/\d/)
+    const travelDates = screen.getByLabelText('Travel dates')
 
-    expect(dateInputs.length).toBeGreaterThanOrEqual(2) // Should have at least 2 fields with numbers (dates)
+    expect(travelDates).toHaveTextContent('Jul 20, 2025')
+
+    expect(travelDates).toHaveTextContent('Jul 22, 2025')
 
   })
  
@@ -432,6 +438,41 @@ describe('TripDetail', () => {
  
     expect(screen.getByText('Paris')).toBeInTheDocument()
 
+  })
+
+  it('shows view-only access without edit controls for a viewer', async () => {
+    const viewerTrip = {
+      ...mockTrip,
+      access: 'viewer',
+      sharedByName: 'Miriam',
+    }
+    mockTripContext.trips = [viewerTrip]
+    mockTripContext.getTripById = vi.fn(() => viewerTrip)
+
+    renderWithProviders(<TripDetail />)
+
+    await waitFor(() => expect(screen.getByText('Viewer')).toBeInTheDocument())
+    expect(screen.getByText('Shared by Miriam')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Trip' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Share Trip' })).not.toBeInTheDocument()
+  })
+
+  it('offers to load the latest trip when a concurrent edit conflicts', async () => {
+    mockTripContext.saveTrip = vi.fn().mockRejectedValue(new Error(
+      'This trip changed since you opened it. Refresh the trip and review the latest changes before saving again.',
+    ))
+
+    renderWithProviders(<TripDetail />)
+    await waitFor(() => expect(screen.getByText('Edit Trip')).toBeInTheDocument())
+    fireEvent.click(screen.getByText('Edit Trip'))
+    fireEvent.change(screen.getByLabelText('Destination'), { target: { value: 'Updated Paris' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(
+      'This trip changed since you opened it',
+    ))
+    fireEvent.click(screen.getByRole('button', { name: 'Load latest changes' }))
+    await waitFor(() => expect(mockTripContext.fetchTrips).toHaveBeenCalledTimes(1))
   })
 
 })

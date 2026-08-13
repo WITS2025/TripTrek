@@ -1,12 +1,8 @@
 {
-  "name": "update",
+  "name": "triptrek-share",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
   "type": "module",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.846.0",
     "@aws-sdk/lib-dynamodb": "^3.846.0"
